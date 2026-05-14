@@ -29,6 +29,8 @@ def detect_provider_type(base_url: str) -> str:
     """Detect provider type from base URL."""
     if not base_url:
         return "unknown"
+    if "api.elevenlabs.io" in base_url or "elevenlabs.io" in base_url:
+        return "elevenlabs"
     if "openai.com" in base_url:
         return "openai"
     elif ":8880" in base_url:
@@ -105,10 +107,32 @@ class ProviderRegistry:
             # Initialize TTS endpoints
             for url in TTS_BASE_URLS:
                 provider_type = detect_provider_type(url)
+                if provider_type == "openai":
+                    seed_models = ["gpt4o-mini-tts", "tts-1", "tts-1-hd"]
+                    seed_voices = ["alloy", "echo", "fable", "nova", "onyx", "shimmer"]
+                elif provider_type == "elevenlabs":
+                    # Static seed; deep voice discovery happens lazily via
+                    # voice_mode.elevenlabs_provider.list_elevenlabs_voices.
+                    seed_models = ["eleven_turbo_v2_5", "eleven_multilingual_v2", "eleven_flash_v2_5"]
+                    seed_voices = [
+                        "JBFqnCBsd6RMkjVDRZzb",  # George
+                        "21m00Tcm4TlvDq8ikWAM",  # Rachel
+                        "AZnzlk1XvdvUeBnXmlld",  # Domi
+                        "EXAVITQu4vr4xnSDxMaL",  # Bella
+                        "ErXwobaYiN019PkySvjV",  # Antoni
+                        "MF3mGyEYCl7XYWbV9V6O",  # Elli
+                        "TxGEqnHWrfWFTfGW9XjX",  # Josh
+                        "VR6AewLTigWG4xSOukaG",  # Arnold
+                        "pNInz6obpgDQGcFmaJgB",  # Adam
+                        "yoZ06aMxZJJ28mfd3POQ",  # Sam
+                    ]
+                else:
+                    seed_models = ["tts-1"]
+                    seed_voices = ["af_alloy", "af_aoede", "af_bella", "af_heart", "af_jadzia", "af_jessica", "af_kore", "af_nicole", "af_nova", "af_river", "af_sarah", "af_sky", "af_v0", "af_v0bella", "af_v0irulan", "af_v0nicole", "af_v0sarah", "af_v0sky", "am_adam", "am_echo", "am_eric", "am_fenrir", "am_liam", "am_michael", "am_onyx", "am_puck", "am_santa", "am_v0adam", "am_v0gurney", "am_v0michael", "bf_alice", "bf_emma", "bf_lily", "bf_v0emma", "bf_v0isabella", "bm_daniel", "bm_fable", "bm_george", "bm_lewis", "bm_v0george", "bm_v0lewis", "ef_dora", "em_alex", "em_santa", "ff_siwis", "hf_alpha", "hf_beta", "hm_omega", "hm_psi", "if_sara", "im_nicola", "jf_alpha", "jf_gongitsune", "jf_nezumi", "jf_tebukuro", "jm_kumo", "pf_dora", "pm_alex", "pm_santa", "zf_xiaobei", "zf_xiaoni", "zf_xiaoxiao", "zf_xiaoyi", "zm_yunjian", "zm_yunxi", "zm_yunxia", "zm_yunyang"]
                 self.registry["tts"][url] = EndpointInfo(
                     base_url=url,
-                    models=["gpt4o-mini-tts", "tts-1", "tts-1-hd"] if provider_type == "openai" else ["tts-1"],
-                    voices=["alloy", "echo", "fable", "nova", "onyx", "shimmer"] if provider_type == "openai" else ["af_alloy", "af_aoede", "af_bella", "af_heart", "af_jadzia", "af_jessica", "af_kore", "af_nicole", "af_nova", "af_river", "af_sarah", "af_sky", "af_v0", "af_v0bella", "af_v0irulan", "af_v0nicole", "af_v0sarah", "af_v0sky", "am_adam", "am_echo", "am_eric", "am_fenrir", "am_liam", "am_michael", "am_onyx", "am_puck", "am_santa", "am_v0adam", "am_v0gurney", "am_v0michael", "bf_alice", "bf_emma", "bf_lily", "bf_v0emma", "bf_v0isabella", "bm_daniel", "bm_fable", "bm_george", "bm_lewis", "bm_v0george", "bm_v0lewis", "ef_dora", "em_alex", "em_santa", "ff_siwis", "hf_alpha", "hf_beta", "hm_omega", "hm_psi", "if_sara", "im_nicola", "jf_alpha", "jf_gongitsune", "jf_nezumi", "jf_tebukuro", "jm_kumo", "pf_dora", "pm_alex", "pm_santa", "zf_xiaobei", "zf_xiaoni", "zf_xiaoxiao", "zf_xiaoyi", "zm_yunjian", "zm_yunxi", "zm_yunxia", "zm_yunyang"],
+                    models=seed_models,
+                    voices=seed_voices,
                     provider_type=provider_type
                 )
             
