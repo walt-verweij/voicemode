@@ -54,6 +54,9 @@ livekit = [
     "livekit-plugins-openai>=0.10.1",
     "livekit-plugins-silero>=0.6.5",
 ]
+elevenlabs = [
+    "elevenlabs>=2.0.0",
+]
 dev = [
     "build>=1.0.0",
     "twine>=4.0.0",
