@@ -563,6 +563,34 @@ AUTO_FOCUS_PANE = env_bool("VOICEMODE_AUTO_FOCUS_PANE", False)
 # OpenAI configuration
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
+
+def _load_elevenlabs_api_key() -> Optional[str]:
+    """Resolve the ElevenLabs API key from env, then credential store.
+
+    Kept separate from OPENAI_API_KEY so the credential-store import stays
+    lazy (avoids a cycle on `keyring` import in headless contexts).
+    """
+    env = os.getenv("ELEVENLABS_API_KEY")
+    if env:
+        return env
+    try:
+        from .credential_store import get_credential_store
+
+        data = get_credential_store().load() or {}
+        return data.get("ELEVENLABS_API_KEY")
+    except Exception:
+        return None
+
+
+# ElevenLabs configuration (optional provider — install voice-mode[elevenlabs])
+ELEVENLABS_API_KEY = _load_elevenlabs_api_key()
+ELEVENLABS_DEFAULT_VOICE = os.getenv(
+    "VOICEMODE_ELEVENLABS_DEFAULT_VOICE", "JBFqnCBsd6RMkjVDRZzb"
+)
+ELEVENLABS_DEFAULT_MODEL = os.getenv(
+    "VOICEMODE_ELEVENLABS_DEFAULT_MODEL", "eleven_turbo_v2_5"
+)
+
 # Helper function to parse comma-separated lists
 def parse_comma_list(env_var: str, fallback: str) -> list:
     """Parse comma-separated list from environment variable."""
