@@ -69,13 +69,18 @@ async def simple_tts_failover(
             selected_voice = voice
             selected_model = clone_profile.model
             logger.info(f"Clone voice '{voice}': model={selected_model}")
+        elif provider_type == "elevenlabs":
+            from .elevenlabs_provider import map_voice_to_elevenlabs
+            selected_voice = map_voice_to_elevenlabs(voice)
+            if selected_voice != voice:
+                logger.info(f"Mapped voice {voice} to {selected_voice} for ElevenLabs")
         elif provider_type == "openai":
             # Map Kokoro voices to OpenAI equivalents, or use OpenAI default
             openai_voices = ["alloy", "echo", "fable", "nova", "onyx", "shimmer"]
             if voice in openai_voices:
                 selected_voice = voice
             else:
-                # Map common Kokoro voices to OpenAI equivalents
+                # Map common Kokoro / ElevenLabs voices to OpenAI equivalents
                 voice_mapping = {
                     "af_sky": "nova",
                     "af_sarah": "nova",
@@ -83,12 +88,70 @@ async def simple_tts_failover(
                     "am_adam": "onyx",
                     "am_echo": "echo",
                     "am_onyx": "onyx",
-                    "bm_fable": "fable"
+                    "bm_fable": "fable",
                 }
-                selected_voice = voice_mapping.get(voice, "alloy")  # Default to alloy
+                # If voice is an ElevenLabs ID, fall through to the dedicated map.
+                from .elevenlabs_provider import (
+                    ELEVENLABS_TO_OPENAI,
+                    map_voice_to_openai,
+                )
+                if voice in ELEVENLABS_TO_OPENAI:
+                    selected_voice = map_voice_to_openai(voice)
+                else:
+                    selected_voice = voice_mapping.get(voice, "alloy")
                 logger.info(f"Mapped voice {voice} to {selected_voice} for OpenAI")
         else:
             selected_voice = voice  # Use original voice for Kokoro
+
+        # ElevenLabs uses its own SDK, not the OpenAI client. Dispatch
+        # to the dedicated provider module before any AsyncOpenAI work.
+        if provider_type == "elevenlabs":
+            from . import config as _vm_config
+            from .elevenlabs_provider import (
+                elevenlabs_text_to_speech,
+                DEFAULT_MODEL_ID,
+            )
+
+            tts_kwargs = dict(kwargs)
+            tts_kwargs.pop("client_key", None)  # OpenAI-only kwarg
+            last_exception = None
+            try:
+                el_model = selected_model if selected_model and selected_model.startswith("eleven_") else DEFAULT_MODEL_ID
+                success, metrics = await elevenlabs_text_to_speech(
+                    text=text,
+                    voice_id=selected_voice,
+                    model_id=el_model,
+                    api_key=_vm_config.ELEVENLABS_API_KEY,
+                    **{k: v for k, v in tts_kwargs.items() if k in {"output_format"}},
+                )
+                if success:
+                    config = {
+                        "base_url": base_url,
+                        "provider": provider_type,
+                        "voice": selected_voice,
+                        "model": el_model,
+                        "endpoint": f"{base_url}/text-to-speech",
+                    }
+                    logger.info(f"TTS succeeded with {base_url} using voice {selected_voice}")
+                    return True, metrics, config
+                # Treat (False, metrics) as a failure with detail in metrics['error'].
+                err_msg = (metrics or {}).get("error", "ElevenLabs TTS failed")
+                last_exception = Exception(err_msg)
+            except Exception as e:
+                last_exception = e
+
+            if last_exception:
+                error_message = str(last_exception)
+                logger.error(f"TTS failed for {base_url}: {error_message}")
+                attempted_endpoints.append({
+                    "endpoint": f"{base_url}/text-to-speech",
+                    "provider": provider_type,
+                    "voice": selected_voice,
+                    "model": selected_model,
+                    "error": error_message,
+                    "error_details": None,
+                })
+                continue
 
         # Disable retries for local endpoints - they either work or don't
         max_retries = 0 if is_local_provider(base_url) else 2
