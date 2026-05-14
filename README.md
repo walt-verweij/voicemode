@@ -119,6 +119,27 @@ For privacy or offline use, install local speech services:
 
 These provide the same API as OpenAI, so VoiceMode switches seamlessly between them.
 
+## Cloud TTS providers
+
+In addition to OpenAI TTS, VoiceMode can use **ElevenLabs** voices:
+
+```bash
+# Optional extra (not installed by default)
+pip install voice-mode[elevenlabs]
+
+# Configure
+export ELEVENLABS_API_KEY=...
+export VOICEMODE_TTS_BASE_URLS="https://api.elevenlabs.io/v1,http://127.0.0.1:8880/v1,https://api.openai.com/v1"
+
+# List available voices on your account
+voicemode elevenlabs list-voices
+
+# Quick TTS smoke test
+voicemode elevenlabs test "Hello from ElevenLabs"
+```
+
+Failover works across all three providers — if ElevenLabs is unreachable, voicemode falls through to Kokoro / OpenAI with a best-effort voice mapping.
+
 ## Installation Details
 
 <details>
