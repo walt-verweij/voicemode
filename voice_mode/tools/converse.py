@@ -1410,10 +1410,16 @@ consult the MCP resources listed above.
     
     # Track execution time and resources
     start_time = time.time()
+    start_memory = None
     if DEBUG:
-        import resource
-        start_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-        logger.debug(f"Starting converse - Memory: {start_memory} KB")
+        try:
+            import resource
+            start_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            logger.debug(f"Starting converse - Memory: {start_memory} KB")
+        except ImportError:
+            # `resource` is a Unix-only stdlib module — skip memory
+            # profiling on Windows. The rest of DEBUG mode is unaffected.
+            logger.debug("resource module unavailable (Windows); skipping memory profiling")
     
     result = None
     success = False
@@ -2159,13 +2165,18 @@ consult the MCP resources listed above.
         logger.info(f"Converse completed in {elapsed:.2f}s")
         
         if DEBUG:
-            import resource
             import gc
-            end_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-            memory_delta = end_memory - start_memory
-            logger.debug(f"Memory delta: {memory_delta} KB (start: {start_memory}, end: {end_memory})")
-            
-            # Force garbage collection
+            try:
+                import resource
+                end_memory = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+                if start_memory is not None:
+                    memory_delta = end_memory - start_memory
+                    logger.debug(f"Memory delta: {memory_delta} KB (start: {start_memory}, end: {end_memory})")
+            except ImportError:
+                # Already logged on entry that resource is unavailable.
+                pass
+
+            # Force garbage collection (works on all platforms).
             collected = gc.collect()
             logger.debug(f"Garbage collected {collected} objects")
 
