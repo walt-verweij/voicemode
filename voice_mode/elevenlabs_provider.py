@@ -18,6 +18,8 @@ from __future__ import annotations
 
 import io
 import logging
+import os
+import re
 import tempfile
 import time
 from typing import Any, AsyncIterator, Dict, List, Optional, Tuple
@@ -29,9 +31,23 @@ logger = logging.getLogger("voicemode")
 # Defaults
 # ---------------------------------------------------------------------------
 
-DEFAULT_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"  # George (ElevenLabs SDK example voice)
-DEFAULT_MODEL_ID = "eleven_turbo_v2_5"
+# Fallback voice ID when the caller-supplied voice can't be resolved.
+# Override via VOICEMODE_ELEVENLABS_DEFAULT_VOICE. Default: George.
+DEFAULT_VOICE_ID = os.getenv(
+    "VOICEMODE_ELEVENLABS_DEFAULT_VOICE", "JBFqnCBsd6RMkjVDRZzb"
+)
+# Override the synthesis model with VOICEMODE_ELEVENLABS_DEFAULT_MODEL.
+DEFAULT_MODEL_ID = os.getenv(
+    "VOICEMODE_ELEVENLABS_DEFAULT_MODEL", "eleven_turbo_v2_5"
+)
 DEFAULT_OUTPUT_FORMAT = "mp3_44100_128"
+
+# ElevenLabs voice IDs are 20-character alphanumeric tokens (e.g.
+# "JBFqnCBsd6RMkjVDRZzb"). Any string of this shape is accepted as an
+# ElevenLabs ID even when it isn't in the static seed list below — this
+# lets users pass professional and cloned voice IDs that didn't exist when
+# the cross-provider mappings were authored.
+_ELEVENLABS_ID_RE = re.compile(r"^[A-Za-z0-9]{20}$")
 
 
 # ---------------------------------------------------------------------------
@@ -110,22 +126,23 @@ def map_voice_to_kokoro(voice: str) -> str:
 def map_voice_to_elevenlabs(voice: str) -> str:
     """Return the ElevenLabs voice ID closest to `voice`.
 
-    Accepts:
-    - an existing ElevenLabs voice ID (passes through unchanged),
+    Accepts, in order:
     - an OpenAI voice name (alloy / echo / fable / nova / onyx / shimmer),
-    - a Kokoro voice name (af_sky, am_adam, ...).
+    - a Kokoro voice name (af_sky, am_adam, ...),
+    - any string matching the ElevenLabs voice ID shape (20-char
+      alphanumeric), including professional and cloned voice IDs that
+      are not in the static cross-provider seed list.
 
-    Falls back to ``DEFAULT_VOICE_ID`` (George) when no mapping is known.
+    Falls back to ``DEFAULT_VOICE_ID`` when no mapping or shape match.
     """
     if not voice:
         return DEFAULT_VOICE_ID
-    # Already an ElevenLabs ID?
-    if voice in ELEVENLABS_TO_OPENAI:
-        return voice
     if voice in OPENAI_TO_ELEVENLABS:
         return OPENAI_TO_ELEVENLABS[voice]
     if voice in KOKORO_TO_ELEVENLABS:
         return KOKORO_TO_ELEVENLABS[voice]
+    if _ELEVENLABS_ID_RE.match(voice):
+        return voice
     return DEFAULT_VOICE_ID
 
 

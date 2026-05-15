@@ -71,6 +71,56 @@ class TestVoiceMapping:
 
         assert map_voice_to_elevenlabs("definitely-not-a-voice") == DEFAULT_VOICE_ID
 
+    def test_unseeded_elevenlabs_id_passes_through(self):
+        """An ElevenLabs voice ID not in the static seed list (e.g. a
+        professional or cloned voice) must pass through unchanged instead
+        of being silently rewritten to George."""
+        from voice_mode.elevenlabs_provider import map_voice_to_elevenlabs
+
+        # 20-char alphanumeric IDs taken from ElevenLabs' professional
+        # voice catalog (Ava, Charlotte, Shelby) — not seed-listed.
+        for unseeded in (
+            "gJx1vCzNCD1EQHT212Ls",
+            "uhYnkYTBc711oAY590Ea",
+            "rfkTsdZrVWEVhDycUYn9",
+        ):
+            assert map_voice_to_elevenlabs(unseeded) == unseeded
+
+    def test_malformed_id_still_falls_back(self):
+        """Strings that look ID-ish but don't match the 20-char alnum shape
+        must NOT pass through — they fall back to DEFAULT_VOICE_ID. Protects
+        against silently sending obvious garbage to the API."""
+        from voice_mode.elevenlabs_provider import (
+            map_voice_to_elevenlabs,
+            DEFAULT_VOICE_ID,
+        )
+
+        for bad in (
+            "too-short",                   # has hyphens, wrong length
+            "has_underscores_inside",      # underscores are not alnum
+            "JBFqnCBsd6RMkjVDRZ",          # 18 chars — too short
+            "JBFqnCBsd6RMkjVDRZzbXX",      # 22 chars — too long
+            "JBFqn CBsd6RMkjVDRZzb",       # contains a space
+        ):
+            assert map_voice_to_elevenlabs(bad) == DEFAULT_VOICE_ID
+
+    def test_env_var_overrides_default_voice(self, monkeypatch):
+        """VOICEMODE_ELEVENLABS_DEFAULT_VOICE must drive the fallback. We
+        patch the module-level constant directly because it is evaluated
+        from the env at import time."""
+        from voice_mode import elevenlabs_provider
+
+        monkeypatch.setattr(
+            elevenlabs_provider, "DEFAULT_VOICE_ID", "OverrideVoiceID2026"
+        )
+        # Unknown voice -> the patched default, not George.
+        assert (
+            elevenlabs_provider.map_voice_to_elevenlabs("nope-no-such-voice")
+            == "OverrideVoiceID2026"
+        )
+        # Empty voice -> the patched default too.
+        assert elevenlabs_provider.map_voice_to_elevenlabs("") == "OverrideVoiceID2026"
+
 
 # ---------------------------------------------------------------------------
 # 3) elevenlabs_text_to_speech happy path
