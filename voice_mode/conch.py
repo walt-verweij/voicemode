@@ -24,12 +24,38 @@ Usage:
         print("Someone is in a voice conversation")
 """
 
-import fcntl
 import json
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
+
+if sys.platform == "win32":
+    import msvcrt
+
+    def _try_lock_exclusive(fd: int) -> None:
+        # Non-blocking exclusive lock on byte 0; persists across ftruncate.
+        os.lseek(fd, 0, os.SEEK_SET)
+        msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+
+    def _unlock(fd: int) -> None:
+        try:
+            os.lseek(fd, 0, os.SEEK_SET)
+            msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+        except OSError:
+            pass
+else:
+    import fcntl
+
+    def _try_lock_exclusive(fd: int) -> None:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+    def _unlock(fd: int) -> None:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        except OSError:
+            pass
 
 # Import config for lock expiry - deferred to avoid circular import
 def _get_lock_expiry() -> float:
@@ -116,8 +142,8 @@ class Conch:
             # Open file for read/write, create if doesn't exist
             self._fd = os.open(str(self.LOCK_FILE), os.O_CREAT | os.O_RDWR, 0o644)
 
-            # Try to get exclusive lock (non-blocking)
-            fcntl.flock(self._fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            # Try to get exclusive lock (non-blocking, cross-platform)
+            _try_lock_exclusive(self._fd)
 
             # Got lock - write our info
             self._acquire_time = datetime.now()
@@ -242,8 +268,8 @@ class Conch:
             held_seconds = (datetime.now() - self._acquire_time).total_seconds()
 
         if self._fd is not None:
+            _unlock(self._fd)
             try:
-                fcntl.flock(self._fd, fcntl.LOCK_UN)
                 os.close(self._fd)
             except OSError:
                 pass
