@@ -582,14 +582,10 @@ def _load_elevenlabs_api_key() -> Optional[str]:
         return None
 
 
-# ElevenLabs configuration (optional provider — install voice-mode[elevenlabs])
+# ElevenLabs configuration (optional provider — install voice-mode[elevenlabs]).
+# Default voice/model live in voice_mode.elevenlabs_provider so the provider
+# module remains the single source of truth (and reads the env vars itself).
 ELEVENLABS_API_KEY = _load_elevenlabs_api_key()
-ELEVENLABS_DEFAULT_VOICE = os.getenv(
-    "VOICEMODE_ELEVENLABS_DEFAULT_VOICE", "JBFqnCBsd6RMkjVDRZzb"
-)
-ELEVENLABS_DEFAULT_MODEL = os.getenv(
-    "VOICEMODE_ELEVENLABS_DEFAULT_MODEL", "eleven_turbo_v2_5"
-)
 
 # Helper function to parse comma-separated lists
 def parse_comma_list(env_var: str, fallback: str) -> list:
