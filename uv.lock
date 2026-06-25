@@ -897,6 +897,23 @@ wheels = [
 ]
 
 [[package]]
+name = "elevenlabs"
+version = "2.47.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "pydantic-core" },
+    { name = "requests" },
+    { name = "typing-extensions" },
+    { name = "websockets" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/59/83/f354abd05bf68238d682c492646a90fd87c8d2cf1cc643b68bb7bf73b164/elevenlabs-2.47.0.tar.gz", hash = "sha256:1e62e0c64d8b78dab27e0076dfff6d498c5c7363c23c545219e70b1602a456d5", size = 596325, upload-time = "2026-05-12T20:23:04.014Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/64/80/3be940678d0d220fb85fe05662d17e352a24c5b487b6f3ce01b16b840deb/elevenlabs-2.47.0-py3-none-any.whl", hash = "sha256:77f20a9939c0c966cfead0c79d6bab204fb2bc5e41e98e0817a180b316c98cbf", size = 1609805, upload-time = "2026-05-12T20:23:01.725Z" },
+]
+
+[[package]]
 name = "email-validator"
 version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3630,6 +3647,9 @@ docs = [
     { name = "mkdocs-minify-plugin" },
     { name = "pymdown-extensions" },
 ]
+elevenlabs = [
+    { name = "elevenlabs" },
+]
 livekit = [
     { name = "livekit" },
     { name = "livekit-agents" },
@@ -3656,6 +3676,7 @@ requires-dist = [
     { name = "build", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "click", specifier = ">=8.0.0" },
     { name = "coverage", extras = ["toml"], marker = "extra == 'test'", specifier = ">=7.4.0" },
+    { name = "elevenlabs", marker = "extra == 'elevenlabs'", specifier = ">=2.0.0" },
     { name = "fastmcp", specifier = ">=3.2.0,<4" },
     { name = "flask", marker = "extra == 'scripts'", specifier = ">=3.0.0" },
     { name = "httpx" },
@@ -3693,7 +3714,7 @@ requires-dist = [
     { name = "webrtcvad-wheels", specifier = ">=2.0.14" },
     { name = "websockets", specifier = ">=12.0" },
 ]
-provides-extras = ["dev", "docs", "livekit", "scripts", "test"]
+provides-extras = ["dev", "docs", "elevenlabs", "livekit", "scripts", "test"]
 
 [[package]]
 name = "watchdog"
